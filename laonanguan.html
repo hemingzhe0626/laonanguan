@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>茉莉花茶数据可视化</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .chart-container { margin: 40px 0; background: #f8f9fa; padding: 20px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 散点图容器 -->
+        <div class="chart-container">
+            <canvas id="scatterChart"></canvas>
+        </div>
+    </div>
+
+<script>
+// 原始数据（已清理空值）
+const teaData = [
+    {名称:"春风", 价格:380, 产地:"云南", 香气:7, 苦感:2},
+    {名称:"小白龙", 价格:190, 产地:"福建", 香气:5, 苦感:6},
+    {名称:"茗豪", 价格:400, 产地:"福建", 香气:6, 苦感:4},
+    {名称:"精品玉螺", 价格:380, 产地:"云南", 香气:5, 苦感:2},
+    {名称:"白玉兔", 价格:880, 产地:"福建", 香气:7, 苦感:2},
+    {名称:"茉莉大白毫", 价格:280, 产地:"福建", 香气:7, 苦感:3},
+    {名称:"四川加窨飘雪", 价格:300, 产地:"四川", 香气:5, 苦感:1},
+    // 其他数据已过滤空值...
+];
+
+// 初始化散点图
+const scatterChart = new Chart(document.getElementById('scatterChart'), {
+    type: 'scatter',
+    data: {
+        datasets: teaData.map(d => ({
+            label: d.名称,
+            data: [{
+                x: d.香气, // X轴：香气
+                y: d.价格  // Y轴：价格
+            }],
+            backgroundColor: `#${Math.floor(Math.random()*16777215).toString(16)}`,
+            pointRadius: 8,
+            pointHoverRadius: 10
+        }))
+    },
+    options: {
+        scales: {
+            x: {
+                title: { display: true, text: '香气 (1-10)' },
+                min: 0,
+                max: 10
+            },
+            y: {
+                title: { display: true, text: '价格 (元)' },
+                beginAtZero: true
+            }
+        },
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    label: (context) => {
+                        const data = context.raw;
+                        const tea = teaData.find(d => d.香气 === data.x && d.价格 === data.y);
+                        return `${tea.名称} - 香气: ${data.x}, 价格: ${data.y}, 苦感: ${tea.苦感}`;
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+</body>
+</html>
