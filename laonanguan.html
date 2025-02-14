@@ -1,74 +1,169 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>茉莉花茶数据可视化</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>茉莉花茶选购工具</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
-        .chart-container { margin: 40px 0; background: #f8f9fa; padding: 20px; border-radius: 8px; }
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .filter-section { margin: 20px 0; background: #f5f5f5; padding: 15px; }
+        .filter-item { margin: 10px 0; }
+        #tea-table { margin: 20px 0; border-collapse: collapse; }
+        #tea-table td, #tea-table th { border: 1px solid #ddd; padding: 8px; }
+        #priceValue::after { content: "元"; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- 散点图容器 -->
-        <div class="chart-container">
-            <canvas id="scatterChart"></canvas>
+    <h2>茉莉花茶选购工具</h2>
+    
+    <!-- 筛选控件 -->
+    <div class="filter-section">
+        <div class="filter-item">
+            价格范围：<input type="range" id="price" min="60" max="1800" step="10" value="1800" oninput="update()">
+            <span id="priceValue">1800</span>
+        </div>
+        <div class="filter-item">
+            产地：<select id="origin" onchange="update()">
+                <option value="全部">全部</option>
+                <option>福建</option>
+                <option>云南</option>
+                <option>四川</option>
+                <option>贵州</option>
+            </select>
         </div>
     </div>
 
+    <!-- 数据表格 -->
+    <table id="tea-table">
+        <thead><tr><th>名称</th><th>价格</th><th>产地</th><th>香气</th><th>苦感</th></tr></thead>
+        <tbody id="table-body"></tbody>
+    </table>
+
+    <!-- 可视化图表容器 -->
+    <div id="scatterPlot" style="width:100%;height:500px;"></div>
+    <div id="barChart" style="width:100%;height:500px;"></div>
+
 <script>
-// 原始数据（已清理空值）
+// 原始数据（已清洗）
 const teaData = [
-    {名称:"春风", 价格:380, 产地:"云南", 香气:7, 苦感:2},
-    {名称:"小白龙", 价格:190, 产地:"福建", 香气:5, 苦感:6},
-    {名称:"茗豪", 价格:400, 产地:"福建", 香气:6, 苦感:4},
-    {名称:"精品玉螺", 价格:380, 产地:"云南", 香气:5, 苦感:2},
-    {名称:"白玉兔", 价格:880, 产地:"福建", 香气:7, 苦感:2},
-    {名称:"茉莉大白毫", 价格:280, 产地:"福建", 香气:7, 苦感:3},
-    {名称:"四川加窨飘雪", 价格:300, 产地:"四川", 香气:5, 苦感:1},
-    // 其他数据已过滤空值...
+    {"名称":"春风","价格":380,"产地":"云南","香气":9,"苦感":1},
+    {"名称":"小白龙","价格":190,"产地":"福建","香气":5,"苦感":6},
+    {"名称":"茗毫","价格":400,"产地":"福建","香气":6,"苦感":4},
+    {"名称":"精品玉螺","价格":280,"产地":"云南","香气":6,"苦感":2},
+    {"名称":"白玉兔","价格":880,"产地":"福建","香气":9,"苦感":2},
+    {"名称":"茉莉大白毫","价格":280,"产地":"福建","香气":6,"苦感":3},
+    {"名称":"四川加窨飘雪","价格":300,"产地":"四川","香气":6,"苦感":1},
+    {"名称":"茉莉茶王","价格":220,"产地":"福建","香气":6,"苦感":1},
+    {"名称":"加窨福鼎针王","价格":1000,"产地":"福建","香气":10,"苦感":1},
+    {"名称":"茉莉雪毫","价格":520,"产地":"福建","香气":7,"苦感":1},
+    {"名称":"黄玉芽","价格":120,"产地":"福建","香气":5,"苦感":5}, // 产地取第一个
+    {"名称":"大白龙","价格":620,"产地":"福建","香气":8,"苦感":1},
+    {"名称":"加窨银毫","价格":120,"产地":"福建","香气":5,"苦感":3},
+    {"名称":"银毫","价格":90,"产地":"福建","香气":4,"苦感":5},
+    {"名称":"茉莉香片","价格":120,"产地":"福建","香气":6,"苦感":1},
+    {"名称":"雪竹针王","价格":560,"产地":"贵州","香气":6,"苦感":1},
+    {"名称":"茉莉飘香","价格":200,"产地":"四川","香气":5,"苦感":3},
+    {"名称":"香云","价格":70,"产地":"福建","香气":4,"苦感":6},
+    {"名称":"香如故","价格":330,"产地":"福建","香气":8,"苦感":3},
+    {"名称":"雾里香","价格":180,"产地":"四川","香气":6,"苦感":5},
+    {"名称":"寿圆","价格":500,"产地":"福建","香气":7,"苦感":1},
+    {"名称":"茉莉翠芽","价格":800,"产地":"四川","香气":8,"苦感":1},
+    {"名称":"女儿环","价格":780,"产地":"云南","香气":6,"苦感":1},
+    {"名称":"香妃玉螺","价格":380,"产地":"云南","香气":7,"苦感":1},
+    {"名称":"银针","价格":290,"产地":"福建","香气":5,"苦感":1},
+    {"名称":"加窨福贡毫","价格":700,"产地":"福建","香气":8,"苦感":1},
+    {"名称":"云针","价格":1200,"产地":"福建","香气":9,"苦感":1},
+    {"名称":"香毫","价格":60,"产地":"福建","香气":4,"苦感":7},
+    {"名称":"金奖大白毫","价格":360,"产地":"福建","香气":7,"苦感":2},
+    {"名称":"茉莉金针","价格":180,"产地":"云南","香气":6,"苦感":1},
+    {"名称":"白芽王","价格":220,"产地":"云南","香气":6,"苦感":1},
+    {"名称":"双龙飞雪","价格":490,"产地":"四川","香气":7,"苦感":2},
+    {"名称":"玉玲珑","价格":800,"产地":"四川","香气":8,"苦感":1},
+    {"名称":"香螺","价格":135,"产地":"云南","香气":6,"苦感":1},
+    {"名称":"茉莉精针王","价格":1800,"产地":"福建","香气":10,"苦感":1},
+    {"名称":"小茶王","价格":360,"产地":"福建","香气":6,"苦感":1},
+    {"名称":"茉莉针王","价格":490,"产地":"福建","香气":6,"苦感":1},
+    {"名称":"福鼎雪芽","价格":620,"产地":"福建","香气":7,"苦感":2}
 ];
 
-// 初始化散点图
-const scatterChart = new Chart(document.getElementById('scatterChart'), {
-    type: 'scatter',
-    data: {
-        datasets: teaData.map(d => ({
-            label: d.名称,
-            data: [{
-                x: d.香气, // X轴：香气
-                y: d.价格  // Y轴：价格
-            }],
-            backgroundColor: `#${Math.floor(Math.random()*16777215).toString(16)}`,
-            pointRadius: 8,
-            pointHoverRadius: 10
-        }))
-    },
-    options: {
-        scales: {
-            x: {
-                title: { display: true, text: '香气 (1-10)' },
-                min: 0,
-                max: 10
-            },
-            y: {
-                title: { display: true, text: '价格 (元)' },
-                beginAtZero: true
-            }
+// 初始化
+let filteredData = [...teaData];
+update();
+
+function update() {
+    // 获取筛选条件
+    const maxPrice = parseInt(document.getElementById('price').value);
+    document.getElementById('priceValue').textContent = maxPrice;
+    const origin = document.getElementById('origin').value;
+    
+    // 过滤数据
+    filteredData = teaData.filter(item => 
+        item.价格 <= maxPrice && 
+        (origin === '全部' || item.产地 === origin)
+    );
+
+    // 更新表格
+    document.getElementById('table-body').innerHTML = filteredData
+        .map(item => `<tr>
+            <td>${item.名称}</td>
+            <td>${item.价格}元</td>
+            <td>${item.产地}</td>
+            <td>${item.香气}/10</td>
+            <td>${item.苦感}/7</td>
+        </tr>`).join('');
+
+    // 更新图表
+    updateCharts();
+}
+
+// 计算产地统计数据
+function getOriginStats() {
+    const origins = [...new Set(teaData.map(d => d.产地))];
+    return origins.map(origin => {
+        const items = teaData.filter(d => d.产地 === origin);
+        return {
+            origin,
+            avgPrice: items.reduce((a,b) => a + b.价格, 0) / items.length,
+            avgAroma: items.reduce((a,b) => a + b.香气, 0) / items.length,
+            avgBitterness: items.reduce((a,b) => a + b.苦感, 0) / items.length
+        };
+    });
+}
+
+function updateCharts() {
+    // 散点图
+    const scatterTrace = {
+        x: filteredData.map(d => d.价格),
+        y: filteredData.map(d => d.香气),
+        mode: 'markers',
+        marker: {
+            size: filteredData.map(d => 15 - d.苦感*2),
+            color: filteredData.map(d => 
+                ({福建:'#1f77b4',云南:'#ff7f0e',四川:'#2ca02c',贵州:'#d62728'}[d.产地])),
+            opacity: 0.8
         },
-        plugins: {
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        const data = context.raw;
-                        const tea = teaData.find(d => d.香气 === data.x && d.价格 === data.y);
-                        return `${tea.名称} - 香气: ${data.x}, 价格: ${data.y}, 苦感: ${tea.苦感}`;
-                    }
-                }
-            }
-        }
-    }
-});
+        text: filteredData.map(d => `${d.名称}<br>苦感: ${d.苦感}`),
+        type: 'scatter'
+    };
+    Plotly.newPlot('scatterPlot', [scatterTrace], {
+        title: '价格-香气-苦感分布图',
+        xaxis: {title: '价格（元）'},
+        yaxis: {title: '香气评分', range: [3, 10.5]}
+    });
+
+    // 柱状图
+    const stats = getOriginStats();
+    const barTrace = {
+        x: stats.map(d => d.origin),
+        y: stats.map(d => d.avgAroma),
+        type: 'bar',
+        marker: {color: ['#1f77b4','#ff7f0e','#2ca02c','#d62728']},
+        name: '平均香气'
+    };
+    Plotly.newPlot('barChart', [barTrace], {
+        title: '产地平均香气对比',
+        yaxis: {title: '香气评分', range: [4, 8.5]}
+    });
+}
 </script>
 </body>
 </html>
